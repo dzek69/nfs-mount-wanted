@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import fs from "fs/promises";
 
 import { rethrow, wait } from "bottom-line-utils";

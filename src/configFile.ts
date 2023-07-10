@@ -55,7 +55,7 @@ const findConfigFile = async (appName: string, fileName?: string, namespace?: st
     }
 
     for (let i = 0; i < paths.length; i++) {
-        const currentPath = paths[i];
+        const currentPath = paths[i]!;
         try {
             console.info("Looking for config", currentPath);
             const info = await fs.stat(currentPath);
