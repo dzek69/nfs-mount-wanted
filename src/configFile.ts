@@ -16,6 +16,7 @@ const findConfigBy = (appName: string) => {
             return this;
         },
         find() {
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
             return findConfigFile(useAppName, useFileName, useNamespace);
         },
     };

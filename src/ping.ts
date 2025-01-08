@@ -1,5 +1,7 @@
-import { ensureError } from "bottom-line-utils";
 import ping from "net-ping";
+import { createError } from "@ezez/errors";
+
+const UnknownError = createError("UnknownError");
 
 const session = ping.createSession({
     retries: 5,
@@ -10,7 +12,7 @@ const pong = (host: string) => {
     return new Promise<{ time: number }>((resolve, reject) => {
         session.pingHost(host, (error, target, start, end) => {
             if (error) {
-                reject(ensureError(error));
+                reject(UnknownError.normalize(error));
                 return;
             }
             resolve({

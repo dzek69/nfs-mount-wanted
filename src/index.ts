@@ -2,7 +2,7 @@
 
 import fs from "fs/promises";
 
-import { rethrow, wait } from "bottom-line-utils";
+import { rethrow, wait } from "@ezez/utils";
 
 import { findConfigBy } from "./configFile.js";
 import { getMounts } from "./mounts.js";
@@ -40,6 +40,7 @@ const WAIT_BETWEEN_PINGS = 1000;
     if (!configFile) {
         throw new Error("Config file could not be found");
     }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
     const config = JSON.parse(String(await fs.readFile(configFile))) as Config;
     if (!config.mounts.length) {
         throw new Error("No mounts configured");
@@ -71,7 +72,7 @@ const WAIT_BETWEEN_PINGS = 1000;
                 }
             };
 
-            // eslint-disable-next-line no-constant-condition
+            // eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
             while (true) {
                 try {
                     await ping(mnt.pingHost);

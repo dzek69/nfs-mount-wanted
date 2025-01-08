@@ -1,14 +1,14 @@
 import { spawn } from "child_process";
 
-import { createError } from "better-custom-error";
+import { createError } from "@ezez/errors";
 
 import type { SpawnOptions } from "child_process";
 
-interface RunResult {
+type RunResult = {
     stdOut: string;
     stdErr: string;
     code: number | null;
-}
+};
 
 const RunError = createError<RunResult>("RunError");
 
