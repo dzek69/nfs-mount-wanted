@@ -13,6 +13,10 @@ interface Mount {
     pingHost: string;
     fsTabPath: string;
     mountPersistentPath?: string;
+    /**
+     * Command to run after first mount
+     */
+    commandAfterFirstMount?: { app: string; args: string[] };
 }
 
 interface Config {
@@ -58,7 +62,7 @@ const WAIT_BETWEEN_PINGS = 1000;
             const wasMountedOnStart = isMounted;
             let firstMountDone = false;
 
-            const { mountPersistentPath } = mnt;
+            const { mountPersistentPath, commandAfterFirstMount } = mnt;
             console.info("Starting listening", mnt.pingHost, "to automount", mnt.fsTabPath);
             console.info("Currently mounted?", isMounted);
             if (isMounted && mountPersistentPath) {
@@ -66,6 +70,15 @@ const WAIT_BETWEEN_PINGS = 1000;
                     console.info("Mounting persistent path (on boot)", mountPersistentPath);
                     const { stdOut, stdErr, code } = await run(
                         "mount", ["--rbind", mnt.fsTabPath, mountPersistentPath],
+                    ).catch(handleRunError);
+                    console.info({ stdOut, stdErr, code });
+                })().catch(rethrow);
+            }
+            if (isMounted && commandAfterFirstMount) {
+                await (async () => {
+                    console.info("Running command after first mount", commandAfterFirstMount);
+                    const { stdOut, stdErr, code } = await run(
+                        commandAfterFirstMount.app, commandAfterFirstMount.args,
                     ).catch(handleRunError);
                     console.info({ stdOut, stdErr, code });
                 })().catch(rethrow);
@@ -79,12 +92,21 @@ const WAIT_BETWEEN_PINGS = 1000;
                     isMounted = await checkIsMounted();
                 })().catch(rethrow);
 
-                if (isMounted && !wasMountedOnStart && !firstMountDone && mountPersistentPath) {
-                    console.info("Mounting persistent path (on first mount)", mountPersistentPath);
-                    const { stdOut, stdErr, code } = await run(
-                        "mount", ["--rbind", mnt.fsTabPath, mountPersistentPath],
-                    ).catch(handleRunError);
-                    console.info({ stdOut, stdErr, code });
+                if (isMounted && !wasMountedOnStart && !firstMountDone) {
+                    if (mountPersistentPath) {
+                        console.info("Mounting persistent path (on first mount)", mountPersistentPath);
+                        const { stdOut, stdErr, code } = await run(
+                            "mount", ["--rbind", mnt.fsTabPath, mountPersistentPath],
+                        ).catch(handleRunError);
+                        console.info({ stdOut, stdErr, code });
+                    }
+                    if (commandAfterFirstMount) {
+                        console.info("Running command after first mount", commandAfterFirstMount);
+                        const { stdOut, stdErr, code } = await run(
+                            commandAfterFirstMount.app, commandAfterFirstMount.args,
+                        ).catch(handleRunError);
+                        console.info({ stdOut, stdErr, code });
+                    }
                 }
                 firstMountDone = true; // eslint-disable-line require-atomic-updates
             };
