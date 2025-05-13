@@ -43,7 +43,8 @@ WIP.
       "mounts": [
         {
           "pingHost": "192.168.101.132",
-          "fsTabPath": "/mnt/nas"
+          "fsTabPath": "/mnt/nas",
+          "mountPersistentPath": "/mnt/nas-visible"
         }
       ]
     }
@@ -54,6 +55,8 @@ WIP.
     ```
 - Run these:
 ```bash
+sudo mkdir -p /mnt/nas
+sudo mkdir -p /mnt/nas-visible
 sudo systemctl daemon-reload
 sudo systemctl enable nfs-mount-wanted.service
 sudo systemctl start nfs-mount-wanted.service

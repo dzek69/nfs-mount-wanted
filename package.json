@@ -1,6 +1,6 @@
 {
   "name": "nfs-mount-wanted",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "repository": "git@github.com:dzek69/nfs-mount-wanted.git",
   "author": "Jacek Nowacki",
   "license": "MIT",

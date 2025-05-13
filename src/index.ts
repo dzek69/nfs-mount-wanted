@@ -10,8 +10,9 @@ import { ping } from "./ping.js";
 import { run, RunError } from "./run.promise.js";
 
 interface Mount {
-    pingHost: "";
-    fsTabPath: "";
+    pingHost: string;
+    fsTabPath: string;
+    mountPersistentPath?: string;
 }
 
 interface Config {
@@ -46,41 +47,66 @@ const WAIT_BETWEEN_PINGS = 1000;
         throw new Error("No mounts configured");
     }
 
-    config.mounts.forEach(mnt => {
-        (async () => {
-            const mounts = await getMounts();
-            let isMounted = Boolean(mounts.find(m => m.type === "nfs" && m.mount === mnt.fsTabPath));
+    config.mounts.forEach(mnt => { // eslint-disable-line max-lines-per-function
+        (async () => { // eslint-disable-line max-statements
+            const checkIsMounted = async () => {
+                const mounts = await getMounts();
+                return Boolean(mounts.find(m => m.type === "nfs" && m.mount === mnt.fsTabPath));
+            };
 
+            let isMounted = await checkIsMounted();
+            const wasMountedOnStart = isMounted;
+            let firstMountDone = false;
+
+            const { mountPersistentPath } = mnt;
             console.info("Starting listening", mnt.pingHost, "to automount", mnt.fsTabPath);
             console.info("Currently mounted?", isMounted);
+            if (isMounted && mountPersistentPath) {
+                await (async () => {
+                    console.info("Mounting persistent path (on boot)", mountPersistentPath);
+                    const { stdOut, stdErr, code } = await run(
+                        "mount", ["--rbind", mnt.fsTabPath, mountPersistentPath],
+                    ).catch(handleRunError);
+                    console.info({ stdOut, stdErr, code });
+                })().catch(rethrow);
+            }
 
             const mount = async () => {
-                console.info(mnt.pingHost, "is up, mounting", mnt.fsTabPath);
-                const { stdOut, stdErr, code } = await run("mount", [mnt.fsTabPath]).catch(handleRunError);
-                console.info({ stdOut, stdErr, code });
-                if (!code) {
-                    isMounted = true;
+                await (async () => {
+                    console.info(mnt.pingHost, "is up, mounting", mnt.fsTabPath);
+                    const { stdOut, stdErr, code } = await run("mount", [mnt.fsTabPath]).catch(handleRunError);
+                    console.info({ stdOut, stdErr, code });
+                    isMounted = await checkIsMounted();
+                })().catch(rethrow);
+
+                if (isMounted && !wasMountedOnStart && !firstMountDone && mountPersistentPath) {
+                    console.info("Mounting persistent path (on first mount)", mountPersistentPath);
+                    const { stdOut, stdErr, code } = await run(
+                        "mount", ["--rbind", mnt.fsTabPath, mountPersistentPath],
+                    ).catch(handleRunError);
+                    console.info({ stdOut, stdErr, code });
                 }
+                firstMountDone = true; // eslint-disable-line require-atomic-updates
             };
 
             const unmount = async () => {
                 console.info(mnt.pingHost, "is down, unmounting", mnt.fsTabPath);
                 const { stdOut, stdErr, code } = await run("umount", ["-l", mnt.fsTabPath]).catch(handleRunError);
                 console.info({ stdOut, stdErr, code });
-                if (!code) {
-                    isMounted = false;
-                }
+                isMounted = await checkIsMounted();
             };
 
             // eslint-disable-next-line no-constant-condition,@typescript-eslint/no-unnecessary-condition
             while (true) {
                 try {
-                    await ping(mnt.pingHost);
+                    const data = await ping(mnt.pingHost);
+                    console.info(mnt.pingHost, "is up", data.time, "ms");
                     if (!isMounted) {
                         await mount();
                     }
                 }
                 catch {
+                    console.info(mnt.pingHost, "is down");
                     if (isMounted) {
                         await unmount();
                     }
